@@ -157,7 +157,8 @@ $("runBtn").onclick = async () => {
     let run = await api("/api/runs", { method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body) });
     step(1, "done"); render(run);
     current = 2; step(2, "run");
-    run = await api(`/api/runs/${run.id}/investigate`, { method: "POST" });
+    run = await api(`/api/runs/${run.id}/investigate`, { method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(run) });
+    saveLocal(run);
     step(2, "done"); step(3, "done"); render(run);
     $("timing").textContent = `Completed in ${((performance.now() - t0) / 1000).toFixed(1)}s`;
     refreshHistory();
@@ -234,12 +235,18 @@ function render(run) {
     (run.combined ? combCard(run) : "");
 }
 
-async function refreshHistory() {
-  const runs = await api("/api/runs");
+const HK = "soc_runs";
+const loadLocal = () => { try { return JSON.parse(localStorage.getItem(HK) || "[]"); } catch { return []; } };
+function saveLocal(run) {
+  try { const all = loadLocal().filter(r => r.id !== run.id); all.unshift(run); localStorage.setItem(HK, JSON.stringify(all.slice(0, 30))); } catch {}
+  refreshHistory();
+}
+function refreshHistory() {
+  const runs = loadLocal();
   $("hist").innerHTML = runs.length ? runs.map(r =>
-    `<button data-id="${r.id}">${esc(r.source)} · ${esc(r.attack_class)} → <b class="${r.agreement || ""}">${esc(r.final_threat_class || r.status)}</b></button>`).join("") : '<span class="muted">No runs yet</span>';
-  $("hist").querySelectorAll("button").forEach(b => b.onclick = async () => {
-    $("err").innerHTML = ""; const run = await api("/api/runs/" + b.dataset.id); render(run);
+    `<button data-id="${r.id}">${esc(r.source)} · ${esc((r.injection || {}).attack_class || "none")} → <b class="${(r.combined || {}).agreement || ""}">${esc((r.combined || {}).final_threat_class || r.status)}</b></button>`).join("") : '<span class="muted">No runs yet</span>';
+  $("hist").querySelectorAll("button").forEach(b => b.onclick = () => {
+    $("err").innerHTML = ""; const run = loadLocal().find(r => r.id === b.dataset.id); if (!run) return; render(run);
     resetSteps(); step(0, "done"); if (run.detection) step(1, "done"); if (run.investigation) { step(2, "done"); step(3, "done"); }
   });
 }

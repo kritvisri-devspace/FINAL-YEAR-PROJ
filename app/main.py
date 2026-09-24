@@ -1,8 +1,7 @@
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException
+from fastapi import Body, FastAPI, HTTPException
 from fastapi.responses import FileResponse, JSONResponse
-from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from . import agents, injector, scenarios, store
@@ -71,8 +70,9 @@ def create_run(req: NewRun):
 
 
 @app.post("/api/runs/{run_id}/investigate")
-def investigate(run_id: str):
-    record = store.get(run_id)
+def investigate(run_id: str, record: dict | None = Body(default=None)):
+    """Serverless-safe: the client sends the run back, so no shared server state is needed."""
+    record = record or store.get(run_id)
     if not record or not record.get("detection"):
         raise HTTPException(404, "run not found or detection not done")
     det = record["detection"]["output"]
@@ -101,7 +101,6 @@ def run(run_id: str):
 
 @app.get("/")
 def index():
-    return FileResponse(ROOT / "static" / "index.html")
+    return FileResponse(ROOT / "public" / "index.html")
 
 
-app.mount("/static", StaticFiles(directory=ROOT / "static"), name="static")

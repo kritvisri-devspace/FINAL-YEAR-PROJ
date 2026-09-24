@@ -5,7 +5,10 @@ import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
-DB = Path(__file__).resolve().parent.parent / "data" / "runs.db"
+import os
+
+# Vercel's filesystem is read-only except /tmp (ephemeral), so saving is best-effort there.
+DB = Path("/tmp/runs.db") if os.getenv("VERCEL") else Path(__file__).resolve().parent.parent / "data" / "runs.db"
 
 
 def _conn():
@@ -23,9 +26,12 @@ def create(record: dict) -> dict:
 
 
 def save(record: dict):
-    with _conn() as c:
-        c.execute("INSERT OR REPLACE INTO runs VALUES (?,?,?)",
-                  (record["id"], record["created"], json.dumps(record)))
+    try:
+        with _conn() as c:
+            c.execute("INSERT OR REPLACE INTO runs VALUES (?,?,?)",
+                      (record["id"], record["created"], json.dumps(record)))
+    except (sqlite3.Error, OSError):
+        pass
 
 
 def get(run_id: str) -> dict | None:
