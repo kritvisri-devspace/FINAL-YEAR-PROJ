@@ -11,3 +11,8 @@ To go local later: set `LLM_PROVIDER=ollama` and `LLM_MODEL=llama3.2:3b` in `.en
 
 Every run stores the exact prompt and output of each agent in `data/runs.db`.
 Ground truth is stored for evaluation but never sent to an agent.
+
+## Deploy on Vercel
+- Import the GitHub repo; Vercel detects FastAPI via `index.py` and serves `public/`.
+- Set environment variables in the Vercel dashboard: `GROQ_API_KEY`, `LLM_PROVIDER=groq`, `LLM_MODEL=openai/gpt-oss-120b`.
+- Vercel's filesystem is ephemeral, so run history lives in the browser (localStorage) there; locally it is also saved to `data/runs.db`.
